@@ -92,6 +92,7 @@ Rails.application.routes.draw do
         get :subscriber_details
         get :attendance
         get :advance_sales
+        get :advance_sales_download
         get :do_report
         get :revenue_by_payment_method
         get :retail

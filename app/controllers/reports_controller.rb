@@ -18,9 +18,58 @@ class ReportsController < ApplicationController
   end
 
   def advance_sales
+    if params[:commit] == 'Download to Excel'
+      redirect_to advance_sales_download_reports_path(params)
+      return
+    end
+
     show_ids = params[:shows]
     redirect_to(reports_path, :alert => "Please select one or more shows.") if show_ids.blank?
     @shows = Show.where(:id => show_ids).includes(:showdates => :vouchers)
+  end
+
+  def advance_sales_download
+    output = CSV.generate do |csv|
+      csv << %w[Show\ Name
+                Run\ Dates
+                Show\ Date
+                House\ Capacity
+                Max\ Advance\ Sales\ for\ Performance
+                Voucher\ Type
+                Subscriber\ Voucher?
+                Max\ Sales\ for\ voucher\ type
+                Sold
+                Price
+                Gross\ Receipts]
+
+      show_ids = params[:shows]
+      show_ids.each do |show_id|
+        show = Show.where(:id => show_id).includes(:showdates => :vouchers).first
+        show.showdates.each do |sd|
+          vouchers = sd.vouchers.finalized
+          sales = Showdate::Sales.new(vouchers.group_by(&:vouchertype), sd.revenue_per_seat, sd.total_offered_for_sale)
+          sales.vouchers.each_pair do |vt,v|
+            csv << [
+                show.name,
+                (show.run_dates),
+                sd.thedate,
+                show.house_capacity,
+                sd.max_advance_sales,
+                vt.name,
+                (if vt.subscriber_voucher? then "YES" else "NO" end),
+                (if vt.valid_vouchers.find { |v| v.showdate_id == sd.id }.max_sales_for_type != ValidVoucher::INFINITE
+                    then vt.valid_vouchers.find { |v| v.showdate_id == sd.id }.max_sales_for_type
+                 else "" end),
+                v.size,
+                vt.price,
+                (ActionController::Base.helpers.number_to_currency(vt.price * v.size))
+            ]
+          end
+        end
+      end
+    end
+
+    download_to_excel(output, "advance_sales_report")
   end
 
   def showdate_sales
