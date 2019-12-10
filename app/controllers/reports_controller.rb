@@ -49,6 +49,7 @@ class ReportsController < ApplicationController
           vouchers = sd.vouchers.finalized
           sales = Showdate::Sales.new(vouchers.group_by(&:vouchertype), sd.revenue_per_seat, sd.total_offered_for_sale)
           sales.vouchers.each_pair do |vt,v|
+            max_sales = vt.valid_vouchers.find { |v| v.showdate_id == sd.id }.max_sales_for_type
             csv << [
                 show.name,
                 (show.run_dates),
@@ -57,9 +58,7 @@ class ReportsController < ApplicationController
                 sd.max_advance_sales,
                 vt.name,
                 (if vt.subscriber_voucher? then "YES" else "NO" end),
-                (if vt.valid_vouchers.find { |v| v.showdate_id == sd.id }.max_sales_for_type != ValidVoucher::INFINITE
-                    then vt.valid_vouchers.find { |v| v.showdate_id == sd.id }.max_sales_for_type
-                 else "" end),
+                (if max_sales != ValidVoucher::INFINITE then max_sales else "" end),
                 v.size,
                 vt.price,
                 (ActionController::Base.helpers.number_to_currency(vt.price * v.size))
