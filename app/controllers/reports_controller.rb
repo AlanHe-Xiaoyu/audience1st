@@ -18,7 +18,7 @@ class ReportsController < ApplicationController
   end
 
   def advance_sales
-    if params[:commit] == 'Download to Excel'
+    if params[:commit] == 'Download'
       redirect_to advance_sales_download_reports_path(params)
       return
     end
